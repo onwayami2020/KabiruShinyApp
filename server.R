@@ -2,7 +2,8 @@ library(shiny)
 library(dplyr)
 library(broom)
 library(ggplot2)
-library(processR)
+library(lavaan)
+library(semPlot)
 
 # Define server logic
 shinyServer(function(input, output, session) {
@@ -35,53 +36,36 @@ shinyServer(function(input, output, session) {
     analysis <- eventReactive(input$analyze, {
         req(input$dependent, input$predictors, input$mediators, input$moderators, input$process_model)
         
+        formula <- ""
+        
         # Prepare the formula based on the selected model
-        if (input$process_model == 1) {
-            # Moderation analysis
-            results <- processR::process(model = 1, 
-                               y = input$dependent, 
-                               x = input$predictors[1], 
-                               w = input$moderators[1], 
-                               data = data(),
-                               boot = input$bootstrap)
-        } else if (input$process_model == 4) {
+        if (input$process_model == 4) {
             # Simple mediation
-            results <- processR::process(model = 4, 
-                               y = input$dependent, 
-                               x = input$predictors[1], 
-                               m = input$mediators[1], 
-                               data = data(),
-                               boot = input$bootstrap)
+            formula <- paste(input$mediators[1], "~", input$predictors[1], "\n",
+                             input$dependent, "~", input$mediators[1], "+", input$predictors[1])
         } else if (input$process_model == 7) {
             # Moderated mediation
-            results <- processR::process(model = 7, 
-                               y = input$dependent, 
-                               x = input$predictors[1], 
-                               m = input$mediators[1], 
-                               w = input$moderators[1], 
-                               data = data(),
-                               boot = input$bootstrap)
+            formula <- paste(input$mediators[1], "~", input$predictors[1], "*", input$moderators[1], "\n",
+                             input$dependent, "~", input$mediators[1], "+", input$predictors[1])
         } else if (input$process_model == 14) {
             # Sequential mediation
-            results <- processR::process(model = 14, 
-                               y = input$dependent, 
-                               x = input$predictors[1], 
-                               m = c(input$mediators[1], input$mediators[2]), 
-                               data = data(),
-                               boot = input$bootstrap)
+            formula <- paste(input$mediators[1], "~", input$predictors[1], "\n",
+                             input$mediators[2], "~", input$mediators[1], "\n",
+                             input$dependent, "~", input$mediators[2], "+", input$predictors[1])
         }
         
-        results
+        model <- sem(formula, data = data(), se = "bootstrap", bootstrap = input$bootstrap)
+        summary(model, fit.measures = TRUE, standardized = TRUE)
     })
     
     output$summary <- renderPrint({
         req(analysis())
-        analysis()$summary
+        analysis()
     })
     
     output$plot <- renderPlot({
         req(analysis())
         
-        processR::processPlot(analysis())
+        semPaths(analysis(), "std", layout = "circle", edge.label.cex = 1.2)
     })
 })
