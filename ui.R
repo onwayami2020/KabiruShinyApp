@@ -16,10 +16,9 @@ shinyUI(fluidPage(
             uiOutput("moderators_ui"),
             selectInput("process_model", "Select PROCESS Model:", 
                         choices = list(
-                            "Model 1" = 1,
-                            "Model 4" = 4,
-                            "Model 7" = 7,
-                            "Model 14" = 14
+                            "Simple Mediation" = 4,
+                            "Moderated Mediation" = 7,
+                            "Sequential Mediation" = 14
                         )),
             numericInput("bootstrap", "Number of Bootstrap Samples:", 1000, min = 100, max = 10000),
             actionButton("analyze", "Analyze")
