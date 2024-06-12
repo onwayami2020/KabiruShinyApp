@@ -1,99 +1,95 @@
 library(shiny)
+library(dplyr)
+library(broom)
 library(ggplot2)
-library(mediation)
-library(lmSupport)
-library(boot)
 
-server <- function(input, output, session) {
-  data <- reactive({
-    req(input$datafile)
-    df <- read.csv(input$datafile$datapath)
-    updateSelectInput(session, "outcome", choices = names(df))
-    updateSelectInput(session, "moderator", choices = names(df))
-    df
-  })
-  
-  output$predictor_ui <- renderUI({
-    df <- data()
-    checkboxGroupInput("predictors", "Select Predictor Variables", choices = names(df))
-  })
-  
-  output$mediator_ui <- renderUI({
-    df <- data()
-    checkboxGroupInput("mediators", "Select Mediator Variables", choices = names(df))
-  })
-  
-  output$moderator_ui <- renderUI({
-    df <- data()
-    checkboxGroupInput("moderators", "Select Moderator Variables", choices = names(df))
-  })
-  
-  observeEvent(input$run_analysis, {
-    req(input$predictors, input$mediators, input$outcome, input$moderators)
+# Define server logic
+shinyServer(function(input, output, session) {
     
-    df <- data()
-    predictors <- input$predictors
-    mediators <- input$mediators
-    outcome <- input$outcome
-    moderators <- input$moderators
-    
-    # Mediation Analysis
-    mediator_models <- lapply(mediators, function(mediator) {
-      lm(as.formula(paste(mediator, "~", paste(predictors, collapse = " + "))), data = df)
+    data <- reactive({
+        req(input$datafile)
+        read.csv(input$datafile$datapath)
     })
     
-    outcome_model <- lm(as.formula(paste(outcome, "~", paste(mediators, collapse = " + "), "+", paste(predictors, collapse = " + "))), data = df)
-    
-    mediation_results <- lapply(1:length(mediators), function(i) {
-      mediate(mediator_models[[i]], outcome_model, treat = predictors[1], mediator = mediators[i], boot = TRUE, sims = input$nboot)
+    output$predictors_ui <- renderUI({
+        req(data())
+        selectInput("predictors", "Select Predictor(s):", choices = names(data()), multiple = TRUE)
     })
     
-    output$mediationResults <- renderPrint({
-      lapply(mediation_results, summary)
+    output$mediators_ui <- renderUI({
+        req(data())
+        selectInput("mediators", "Select Mediator(s):", choices = names(data()), multiple = TRUE)
     })
     
-    output$mediationPlot <- renderPlot({
-      mediation_effects <- sapply(mediation_results, function(res) res$d0)
-      mediation_effects <- data.frame(Mediator = mediators, Effect = mediation_effects)
-      ggplot(mediation_effects, aes(x = Mediator, y = Effect)) +
-        geom_bar(stat = "identity") +
-        labs(title = "Mediation Effects", x = "Mediator", y = "Effect Size")
+    output$moderators_ui <- renderUI({
+        req(data())
+        selectInput("moderators", "Select Moderator(s):", choices = names(data()), multiple = TRUE)
     })
     
-    # Moderation Analysis
-    moderation_models <- lapply(moderators, function(mod) {
-      lm(as.formula(paste(outcome, "~", paste(predictors, collapse = " + "), "*", mod)), data = df)
+    analysis <- eventReactive(input$analyze, {
+        req(input$predictors, input$mediators, input$moderators)
+        
+        # Perform mediation analysis
+        mediation_results <- list()
+        for (mediator in input$mediators) {
+            for (predictor in input$predictors) {
+                model1 <- lm(as.formula(paste(mediator, "~", predictor)), data = data())
+                model2 <- lm(as.formula(paste(input$moderators, "~", mediator)), data = data())
+                mediation_results[[paste(predictor, mediator, sep = " -> ")]] <- list(
+                    model1_summary = summary(model1),
+                    model2_summary = summary(model2),
+                    model1_tidy = tidy(model1),
+                    model2_tidy = tidy(model2)
+                )
+            }
+        }
+        
+        # Perform moderation analysis
+        moderation_results <- list()
+        for (moderator in input$moderators) {
+            for (predictor in input$predictors) {
+                interaction_term <- paste(predictor, "*", moderator, sep = "")
+                formula <- as.formula(paste("Y ~", predictor, "+", moderator, "+", interaction_term))
+                model <- lm(formula, data = data())
+                moderation_results[[paste(predictor, moderator, sep = " * ")]] <- list(
+                    model_summary = summary(model),
+                    model_tidy = tidy(model)
+                )
+            }
+        }
+        
+        list(mediation = mediation_results, moderation = moderation_results)
     })
     
-    output$moderationResults <- renderPrint({
-      lapply(moderation_models, summary)
+    output$summary <- renderPrint({
+        req(analysis())
+        analysis()
     })
     
-    output$moderationPlot <- renderPlot({
-      mod_results <- lapply(moderation_models, function(mod_model) {
-        plot(mod_model)
-      })
-      do.call(grid.arrange, mod_results)
+    output$plot <- renderPlot({
+        req(analysis())
+        
+        mediation_plots <- list()
+        moderation_plots <- list()
+        
+        for (result in analysis()$mediation) {
+            model_tidy <- result$model1_tidy
+            p <- ggplot(model_tidy, aes(x = term, y = estimate)) +
+                geom_point() +
+                geom_errorbar(aes(ymin = estimate - std.error, ymax = estimate + std.error)) +
+                ggtitle("Mediation Analysis")
+            mediation_plots <- append(mediation_plots, list(p))
+        }
+        
+        for (result in analysis()$moderation) {
+            model_tidy <- result$model_tidy
+            p <- ggplot(model_tidy, aes(x = term, y = estimate)) +
+                geom_point() +
+                geom_errorbar(aes(ymin = estimate - std.error, ymax = estimate + std.error)) +
+                ggtitle("Moderation Analysis")
+            moderation_plots <- append(moderation_plots, list(p))
+        }
+        
+        gridExtra::grid.arrange(grobs = c(mediation_plots, moderation_plots), ncol = 2)
     })
-    
-    # Multi-Group Analysis
-    multi_group_results <- list()
-    for (mod in moderators) {
-      groups <- unique(df[[mod]])
-      group_results <- lapply(groups, function(group) {
-        group_data <- df[df[[mod]] == group, ]
-        lm(as.formula(paste(outcome, "~", paste(predictors, collapse = " + "), "+", paste(mediators, collapse = " + "))), data = group_data)
-      })
-      names(group_results) <- groups
-      multi_group_results[[mod]] <- group_results
-    }
-    
-    output$multigroupResults <- renderPrint({
-      lapply(multi_group_results, function(group_results) {
-        lapply(group_results, summary)
-      })
-    })
-  })
-}
-
-shinyApp(ui = ui, server = server)
+})
