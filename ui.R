@@ -2,7 +2,7 @@ library(shiny)
 
 # Define UI for application
 shinyUI(fluidPage(
-    titlePanel("Mediation and Moderation Analysis"),
+    titlePanel("Process Analysis by Hayes"),
     
     sidebarLayout(
         sidebarPanel(
@@ -14,6 +14,13 @@ shinyUI(fluidPage(
             uiOutput("predictors_ui"),
             uiOutput("mediators_ui"),
             uiOutput("moderators_ui"),
+            selectInput("process_model", "Select PROCESS Model:", 
+                        choices = list(
+                            "Model 1" = 1,
+                            "Model 4" = 4,
+                            "Model 7" = 7,
+                            "Model 14" = 14
+                        )),
             numericInput("bootstrap", "Number of Bootstrap Samples:", 1000, min = 100, max = 10000),
             actionButton("analyze", "Analyze")
         ),
