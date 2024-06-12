@@ -33,5 +33,5 @@ Make sure you have these packages installed before running the app.
 **License**
 This project is licensed under the MIT License.
 
-Citation
+**Citation**
 Kura, K. M. (2024). Kabiru Maitama Kura Statistical Analysis App [Software]. https://9y91ng-kabiru0maitama0kura.shinyapps.io/KabiruShinyApp/
