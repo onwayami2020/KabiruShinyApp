@@ -2,6 +2,7 @@ library(shiny)
 library(dplyr)
 library(broom)
 library(ggplot2)
+library(processR)
 
 # Define server logic
 shinyServer(function(input, output, session) {
@@ -32,69 +33,55 @@ shinyServer(function(input, output, session) {
     })
     
     analysis <- eventReactive(input$analyze, {
-        req(input$dependent, input$predictors, input$mediators, input$moderators)
+        req(input$dependent, input$predictors, input$mediators, input$moderators, input$process_model)
         
-        # Perform mediation analysis
-        mediation_results <- list()
-        for (mediator in input$mediators) {
-            for (predictor in input$predictors) {
-                model1 <- lm(as.formula(paste(mediator, "~", predictor)), data = data())
-                model2 <- lm(as.formula(paste(input$dependent, "~", mediator)), data = data())
-                mediation_results[[paste(predictor, mediator, sep = " -> ")]] <- list(
-                    model1_summary = summary(model1),
-                    model2_summary = summary(model2),
-                    model1_tidy = tidy(model1),
-                    model2_tidy = tidy(model2)
-                )
-            }
+        # Prepare the formula based on the selected model
+        if (input$process_model == 1) {
+            # Moderation analysis
+            results <- processR::process(model = 1, 
+                               y = input$dependent, 
+                               x = input$predictors[1], 
+                               w = input$moderators[1], 
+                               data = data(),
+                               boot = input$bootstrap)
+        } else if (input$process_model == 4) {
+            # Simple mediation
+            results <- processR::process(model = 4, 
+                               y = input$dependent, 
+                               x = input$predictors[1], 
+                               m = input$mediators[1], 
+                               data = data(),
+                               boot = input$bootstrap)
+        } else if (input$process_model == 7) {
+            # Moderated mediation
+            results <- processR::process(model = 7, 
+                               y = input$dependent, 
+                               x = input$predictors[1], 
+                               m = input$mediators[1], 
+                               w = input$moderators[1], 
+                               data = data(),
+                               boot = input$bootstrap)
+        } else if (input$process_model == 14) {
+            # Sequential mediation
+            results <- processR::process(model = 14, 
+                               y = input$dependent, 
+                               x = input$predictors[1], 
+                               m = c(input$mediators[1], input$mediators[2]), 
+                               data = data(),
+                               boot = input$bootstrap)
         }
         
-        # Perform moderation analysis
-        moderation_results <- list()
-        for (moderator in input$moderators) {
-            for (predictor in input$predictors) {
-                interaction_term <- paste(predictor, "*", moderator, sep = "")
-                formula <- as.formula(paste(input$dependent, "~", predictor, "+", moderator, "+", interaction_term))
-                model <- lm(formula, data = data())
-                moderation_results[[paste(predictor, moderator, sep = " * ")]] <- list(
-                    model_summary = summary(model),
-                    model_tidy = tidy(model)
-                )
-            }
-        }
-        
-        list(mediation = mediation_results, moderation = moderation_results)
+        results
     })
     
     output$summary <- renderPrint({
         req(analysis())
-        analysis()
+        analysis()$summary
     })
     
     output$plot <- renderPlot({
         req(analysis())
         
-        mediation_plots <- list()
-        moderation_plots <- list()
-        
-        for (result in analysis()$mediation) {
-            model_tidy <- result$model1_tidy
-            p <- ggplot(model_tidy, aes(x = term, y = estimate)) +
-                geom_point() +
-                geom_errorbar(aes(ymin = estimate - std.error, ymax = estimate + std.error)) +
-                ggtitle("Mediation Analysis")
-            mediation_plots <- append(mediation_plots, list(p))
-        }
-        
-        for (result in analysis()$moderation) {
-            model_tidy <- result$model_tidy
-            p <- ggplot(model_tidy, aes(x = term, y = estimate)) +
-                geom_point() +
-                geom_errorbar(aes(ymin = estimate - std.error, ymax = estimate + std.error)) +
-                ggtitle("Moderation Analysis")
-            moderation_plots <- append(moderation_plots, list(p))
-        }
-        
-        gridExtra::grid.arrange(grobs = c(mediation_plots, moderation_plots), ncol = 2)
+        processR::processPlot(analysis())
     })
 })
