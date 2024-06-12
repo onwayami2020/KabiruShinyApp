@@ -10,6 +10,7 @@ shinyUI(fluidPage(
                       accept = c('text/csv', 
                                  'text/comma-separated-values,text/plain', 
                                  '.csv')),
+            uiOutput("dependent_ui"),
             uiOutput("predictors_ui"),
             uiOutput("mediators_ui"),
             uiOutput("moderators_ui"),
