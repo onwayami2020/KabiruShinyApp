@@ -11,6 +11,11 @@ shinyServer(function(input, output, session) {
         read.csv(input$datafile$datapath)
     })
     
+    output$dependent_ui <- renderUI({
+        req(data())
+        selectInput("dependent", "Select Dependent Variable:", choices = names(data()))
+    })
+    
     output$predictors_ui <- renderUI({
         req(data())
         selectInput("predictors", "Select Predictor(s):", choices = names(data()), multiple = TRUE)
@@ -27,14 +32,14 @@ shinyServer(function(input, output, session) {
     })
     
     analysis <- eventReactive(input$analyze, {
-        req(input$predictors, input$mediators, input$moderators)
+        req(input$dependent, input$predictors, input$mediators, input$moderators)
         
         # Perform mediation analysis
         mediation_results <- list()
         for (mediator in input$mediators) {
             for (predictor in input$predictors) {
                 model1 <- lm(as.formula(paste(mediator, "~", predictor)), data = data())
-                model2 <- lm(as.formula(paste(input$moderators, "~", mediator)), data = data())
+                model2 <- lm(as.formula(paste(input$dependent, "~", mediator)), data = data())
                 mediation_results[[paste(predictor, mediator, sep = " -> ")]] <- list(
                     model1_summary = summary(model1),
                     model2_summary = summary(model2),
@@ -49,7 +54,7 @@ shinyServer(function(input, output, session) {
         for (moderator in input$moderators) {
             for (predictor in input$predictors) {
                 interaction_term <- paste(predictor, "*", moderator, sep = "")
-                formula <- as.formula(paste("Y ~", predictor, "+", moderator, "+", interaction_term))
+                formula <- as.formula(paste(input$dependent, "~", predictor, "+", moderator, "+", interaction_term))
                 model <- lm(formula, data = data())
                 moderation_results[[paste(predictor, moderator, sep = " * ")]] <- list(
                     model_summary = summary(model),
