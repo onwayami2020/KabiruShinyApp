@@ -1,38 +1,41 @@
-Welcome to the Kabiru Maitama Kura Statistical Analysis App! This Shiny application is designed to perform various statistical analyses, including Descriptive Statistics, Correlation Analysis, Regression Analysis, and Reliability Analysis.
+# Shiny Application for Sampling Technique Using a Simple Random Sampling
 
-**Features**
-**Descriptive Statistics:** Get a summary of the data, including measures of central tendency, dispersion, and distribution.
+Welcome to the Shiny Application for Sampling Technique Using Simple Random Sampling! This application allows users to perform Simple Random Sampling from a given dataset.
 
-**Correlation Analysis:** Compute correlation coefficients to understand the relationship between variables.
+## Features
 
-**Regression Analysis:** Perform linear regression analysis to model the relationship between one or more independent variables and a dependent variable.
+- **Simple Random Sampling**: Generate a simple random sample from your uploaded dataset.
+- **Sample Data View**: View the sampled data.
+- **Summary Statistics**: View summary statistics of the sampled data.
 
-**Reliability Analysis:** Calculate Cronbach's alpha to assess the internal consistency reliability of a set of scale items.
+## How to Use
 
-**Usage**
-**Upload Data:** Start by uploading your data in CSV format using the file input widget.
+1. **Upload Data**: Click on "Choose CSV file" to upload your dataset in CSV format.
+2. **Select Sample Size**: Enter the desired sample size for random sampling.
+3. **Generate Sample**: Click the "Generate Sample" button to perform the random sampling.
+4. **View Results**: Navigate through the tabs to view sample data and summary statistics.
 
-**Select Variables:** Choose the variables you want to analyze for each type of analysis.
+## Citation
 
-**Analyze: **Click the "Analyze" button to perform the selected analysis.
+If you use this application in your research, please cite it as follows:
 
-**View Results:** Explore the results in the different tabs for each analysis type.
+**APA 7th edition citation:**
 
-**Deployment**
-The app can be deployed using platforms like shinyapps.io. Follow the instructions in the Deployment section of the README to deploy the app for public access.
+Kura, K. M. (2024). *Kabiru Maitama Kura Sampling Technique App* [Shiny application]. ShinyApps.io. Available from http://your-app-url
 
-**Dependencies**
-The app relies on the following R packages:
+## License
 
-shiny: For building the interactive web application.
-dplyr: For data manipulation.
-psych: For reliability analysis.
-Other packages for specific analyses like regression.
-Make sure you have these packages installed before running the app.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-**License**
-This project is licensed under the MIT License.
+## Acknowledgments
 
-**Citation**
+Special thanks to the developers and contributors of the R packages used in this application.
 
-Kura, K. M. (2024). Kabiru Maitama Kura Statistical Analysis App [Software]. https://9y91ng-kabiru0maitama0kura.shinyapps.io/KabiruShinyApp/
+## Citation
+
+If you use this application in your research, please cite it as follows:
+
+**APA 7th edition citation:**
+
+Kura, K. M. (2024). *Shiny Application for Sampling Technique Using a Simple Random Sampling* [Shiny application]. ShinyApps.io. Available from https://9y91ng-kabiru0maitama0kura.shinyapps.io/KabiruShinyApp/
+
