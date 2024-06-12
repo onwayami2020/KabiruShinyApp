@@ -1,71 +1,80 @@
 library(shiny)
 library(dplyr)
-library(broom)
-library(ggplot2)
-library(lavaan)
-library(semPlot)
+library(psych)  # Load psych package for reliability analysis
 
 # Define server logic
 shinyServer(function(input, output, session) {
+  
+  data <- reactive({
+    req(input$datafile)
+    read.csv(input$datafile$datapath)
+  })
+  
+  output$independent_variables_ui <- renderUI({
+    req(data())
+    selectInput("independent_variables", "Select Independent Variables:", 
+                choices = names(data()), multiple = TRUE)
+  })
+  
+  output$dependent_variables_ui <- renderUI({
+    req(data())
+    selectInput("dependent_variables", "Select Dependent Variables:", 
+                choices = names(data()), multiple = TRUE)
+  })
+  
+  analysis <- eventReactive(input$analyze, {
+    req(input$independent_variables, input$dependent_variables)
     
-    data <- reactive({
-        req(input$datafile)
-        read.csv(input$datafile$datapath)
+    # Descriptive Statistics
+    desc_stats <- describe(data()[, input$independent_variables])
+    
+    # Correlation Analysis
+    corr_matrix <- cor(data()[, input$independent_variables])
+    
+    # Regression Analysis
+    regression_models <- lapply(input$dependent_variables, function(dep_var) {
+      indep_vars <- input$independent_variables
+      regression_model <- lm(data = data(), formula = as.formula(paste(dep_var, "~", paste(indep_vars, collapse = " + "))))
+      model_summary <- summary(regression_model)
+      model_fit <- list(Rsq = round(summary(regression_model)$r.squared, 3),
+                        Adj_Rsq = round(summary(regression_model)$adj.r.squared, 3),
+                        F_value = round(summary(regression_model)$fstatistic[1], 3),
+                        p_value = round(summary(regression_model)$fstatistic[2], 3))
+      list(dependent_variable = dep_var, model_summary = model_summary, model_fit = model_fit)
     })
     
-    output$dependent_ui <- renderUI({
-        req(data())
-        selectInput("dependent", "Select Dependent Variable:", choices = names(data()))
-    })
+    # Reliability Analysis
+    reliability_analysis <- alpha(data()[, input$independent_variables])$total$raw_alpha
     
-    output$predictors_ui <- renderUI({
-        req(data())
-        selectInput("predictors", "Select Predictor(s):", choices = names(data()), multiple = TRUE)
+    list(descriptive_stats = desc_stats,
+         correlation_analysis = corr_matrix,
+         regression_analysis = regression_models,
+         reliability_analysis = reliability_analysis)
+  })
+  
+  output$descriptive_stats <- renderPrint({
+    req(analysis())
+    analysis()$descriptive_stats
+  })
+  
+  output$correlation_analysis <- renderPrint({
+    req(analysis())
+    analysis()$correlation_analysis
+  })
+  
+  output$regression_analysis <- renderPrint({
+    req(analysis())
+    lapply(analysis()$regression_analysis, function(model) {
+      paste("Dependent Variable:", model$dependent_variable)
+      print(model$model_summary)
+      paste("Model Fit:")
+      print(model$model_fit)
     })
-    
-    output$mediators_ui <- renderUI({
-        req(data())
-        selectInput("mediators", "Select Mediator(s):", choices = names(data()), multiple = TRUE)
-    })
-    
-    output$moderators_ui <- renderUI({
-        req(data())
-        selectInput("moderators", "Select Moderator(s):", choices = names(data()), multiple = TRUE)
-    })
-    
-    analysis <- eventReactive(input$analyze, {
-        req(input$dependent, input$predictors, input$mediators, input$moderators, input$process_model)
-        
-        formula <- ""
-        
-        # Prepare the formula based on the selected model
-        if (input$process_model == 4) {
-            # Simple mediation
-            formula <- paste(input$mediators[1], "~", input$predictors[1], "\n",
-                             input$dependent, "~", input$mediators[1], "+", input$predictors[1])
-        } else if (input$process_model == 7) {
-            # Moderated mediation
-            formula <- paste(input$mediators[1], "~", input$predictors[1], "*", input$moderators[1], "\n",
-                             input$dependent, "~", input$mediators[1], "+", input$predictors[1])
-        } else if (input$process_model == 14) {
-            # Sequential mediation
-            formula <- paste(input$mediators[1], "~", input$predictors[1], "\n",
-                             input$mediators[2], "~", input$mediators[1], "\n",
-                             input$dependent, "~", input$mediators[2], "+", input$predictors[1])
-        }
-        
-        model <- sem(formula, data = data(), se = "bootstrap", bootstrap = input$bootstrap)
-        summary(model, fit.measures = TRUE, standardized = TRUE)
-    })
-    
-    output$summary <- renderPrint({
-        req(analysis())
-        analysis()
-    })
-    
-    output$plot <- renderPlot({
-        req(analysis())
-        
-        semPaths(analysis(), "std", layout = "circle", edge.label.cex = 1.2)
-    })
+  })
+  
+  output$reliability_analysis <- renderPrint({
+    req(analysis())
+    analysis()$reliability_analysis
+  })
+  
 })
