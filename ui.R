@@ -2,33 +2,26 @@ library(shiny)
 
 # Define UI for application
 shinyUI(fluidPage(
-    titlePanel("Process Analysis by Hayes"),
+  titlePanel("Kabiru Maitama Kura Statistical Analysis App"),
+  
+  sidebarLayout(
+    sidebarPanel(
+      fileInput('datafile', 'Choose CSV file',
+                accept = c('text/csv', 
+                           'text/comma-separated-values,text/plain', 
+                           '.csv')),
+      uiOutput("independent_variables_ui"),
+      uiOutput("dependent_variables_ui"),
+      actionButton("analyze", "Analyze")
+    ),
     
-    sidebarLayout(
-        sidebarPanel(
-            fileInput('datafile', 'Choose CSV file',
-                      accept = c('text/csv', 
-                                 'text/comma-separated-values,text/plain', 
-                                 '.csv')),
-            uiOutput("dependent_ui"),
-            uiOutput("predictors_ui"),
-            uiOutput("mediators_ui"),
-            uiOutput("moderators_ui"),
-            selectInput("process_model", "Select PROCESS Model:", 
-                        choices = list(
-                            "Simple Mediation" = 4,
-                            "Moderated Mediation" = 7,
-                            "Sequential Mediation" = 14
-                        )),
-            numericInput("bootstrap", "Number of Bootstrap Samples:", 1000, min = 100, max = 10000),
-            actionButton("analyze", "Analyze")
-        ),
-        
-        mainPanel(
-            tabsetPanel(
-                tabPanel("Summary", verbatimTextOutput("summary")),
-                tabPanel("Plot", plotOutput("plot"))
-            )
-        )
+    mainPanel(
+      tabsetPanel(
+        tabPanel("Descriptive Statistics", verbatimTextOutput("descriptive_stats")),
+        tabPanel("Correlation Analysis", verbatimTextOutput("correlation_analysis")),
+        tabPanel("Regression Analysis", verbatimTextOutput("regression_analysis")),
+        tabPanel("Reliability Analysis", verbatimTextOutput("reliability_analysis"))
+      )
     )
+  )
 ))
